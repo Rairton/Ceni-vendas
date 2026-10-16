@@ -30,6 +30,7 @@ body {
 
 button, input, select { font: inherit; }
 button { color: inherit; }
+button, input, select, textarea, a, [role="button"], .product-card, .category-chip, .cart-bar { touch-action: manipulation; }
 button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 .hidden { display: none !important; }
 
