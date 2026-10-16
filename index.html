@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#121212">
+  <meta name="description" content="Ponto de venda para a equipe Ceni.">
+  <title>Ceni | PDV da equipe</title>
+  <link rel="icon" href="Logo.png">
+  <link rel="stylesheet" href="style.css">
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js">
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js">
+  <script type="module" src="script.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Ceni - início">
+        <img src="Logo.png" alt="Logo Ceni">
+        <span><strong>CENI</strong><small>PDV da equipe</small></span>
+      </a>
+      <label class="attendant-field">
+        <span>Atendente do pedido</span>
+        <select id="attendantSelect" required aria-label="Selecione seu nome">
+          <option value="">Carregando...</option>
+        </select>
+      </label>
+    </header>
+
+    <main class="main-content">
+      <section class="welcome-row">
+        <div>
+          <p class="eyebrow">PONTO DE VENDA</p>
+          <h1>Monte seu pedido</h1>
+          <p class="muted">Encontre produtos e serviços para adicionar ao carrinho.</p>
+        </div>
+        <div class="connection" aria-live="polite"><span class="connection-dot" id="connectionDot"></span><span id="connectionStatus">Conectando...</span></div>
+      </section>
+
+      <section class="catalog-section" aria-label="Catálogo">
+        <label class="search-field">
+          <span aria-hidden="true">⌕</span>
+          <input id="catalogSearch" type="search" placeholder="Buscar produto ou serviço..." autocomplete="off" aria-label="Buscar produto ou serviço">
+          <button class="clear-search hidden" id="clearSearch" type="button" aria-label="Limpar busca">×</button>
+        </label>
+        <nav class="category-chips" id="categoryFilters" aria-label="Filtros de categoria"></nav>
+        <div class="catalog-meta"><span id="catalogCount">Carregando catálogo...</span></div>
+        <div class="catalog-grid" id="catalogGrid" aria-live="polite">
+          <div class="loading-card"><span class="spinner"></span><span>Carregando catálogo...</span></div>
+        </div>
+      </section>
+    </main>
+
+    <button class="cart-bar" id="openCart" type="button" aria-haspopup="dialog" aria-controls="cartSheet" disabled>
+      <span class="cart-icon" aria-hidden="true">▣</span>
+      <span class="cart-bar-copy"><strong>Ver carrinho</strong><small id="cartBarItems">0 itens</small></span>
+      <strong class="cart-bar-total" id="cartBarTotal">R$ 0,00</strong>
+      <span class="cart-bar-arrow" aria-hidden="true">↑</span>
+    </button>
+
+    <div class="sheet-backdrop hidden" id="sheetBackdrop"></div>
+    <section class="cart-sheet" id="cartSheet" role="dialog" aria-modal="true" aria-labelledby="cartTitle" aria-hidden="true" inert>
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <header class="sheet-header">
+        <div><p class="eyebrow">PEDIDO ATUAL</p><h2 id="cartTitle">Seu carrinho</h2></div>
+        <button class="icon-button" id="closeCart" type="button" aria-label="Fechar carrinho">×</button>
+      </header>
+      <div class="cart-lines" id="cartLines"></div>
+      <div class="checkout-area">
+        <div class="summary-row"><span>Subtotal</span><strong id="cartSubtotal">R$ 0,00</strong></div>
+        <div class="summary-row promo-row hidden" id="promoRow"><span>Descontos promocionais</span><strong id="promoTotal">− R$ 0,00</strong></div>
+        <div class="summary-row total-row"><span>Total do pedido</span><strong id="cartTotal">R$ 0,00</strong></div>
+
+        <div class="discount-box">
+          <label for="manualDiscount">Desconto manual (R$)<span class="field-hint">limite de 5% do total</span></label>
+          <input id="manualDiscount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00" disabled>
+          <small class="discount-limit" id="discountLimit">Máximo permitido: R$ 0,00</small>
+          <label for="discountReason">Motivo do desconto</label>
+          <input id="discountReason" type="text" maxlength="160" placeholder="Obrigatório quando houver desconto" disabled>
+        </div>
+
+        <div class="checkout-fields">
+          <label for="paymentMethod">Forma de pagamento</label>
+          <select id="paymentMethod">
+            <option value="Dinheiro">Dinheiro</option>
+            <option value="PIX">PIX</option>
+            <option value="Débito">Débito</option>
+            <option value="Crédito">Crédito</option>
+          </select>
+        </div>
+        <button class="finish-button" id="finishSale" type="button" disabled>
+          <span id="finishButtonText">Finalizar venda</span><span aria-hidden="true">→</span>
+        </button>
+        <p class="checkout-note">Confira os itens e o atendente antes de finalizar.</p>
+      </div>
+    </section>
+
+    <div class="toast-region" id="toastRegion" role="status" aria-live="polite"></div>
+    <div class="success-overlay hidden" id="successOverlay" role="dialog" aria-modal="true" aria-labelledby="successTitle">
+      <div class="success-card">
+        <div class="success-mark" aria-hidden="true">✓</div>
+        <p class="eyebrow">PEDIDO REGISTRADO</p>
+        <h2 id="successTitle">Venda finalizada!</h2>
+        <p id="successMessage">O pedido foi enviado com sucesso.</p>
+        <button class="finish-button" id="successDone" type="button">Continuar vendendo</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
