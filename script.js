@@ -2,6 +2,7 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/fireba
 import {
   collection,
   doc,
+  getDoc,
   getFirestore,
   onSnapshot,
   runTransaction
@@ -18,15 +19,16 @@ import {
     messagingSenderId: '37904088103',
     appId: '1:37904088103:web:71850292e75661cda7e202'
   };
-  const STAFF_NAMES = ['Caixa 1', 'Caixa 2', 'Caixa 3'];
+  const DEFAULT_STAFF_NAMES = ['Caixa 1', 'Caixa 2', 'Caixa 3'];
   const COLLECTIONS = ['produtos', 'servicos', 'promocoes'];
   const $ = (selector, scope = document) => scope.querySelector(selector);
-  const state = { produtos: [], servicos: [], promocoes: [] };
+  const state = { produtos: [], servicos: [], promocoes: [], attendants: DEFAULT_STAFF_NAMES.slice() };
   let db;
   let cart = [];
   let activeCategory = 'Tudo';
   const initializedCollections = new Set();
   let cloudReady = false;
+  let attendantsReady = false;
   let isSubmitting = false;
 
   const currency = value => Number(value || 0).toLocaleString('pt-BR', {
@@ -78,9 +80,26 @@ import {
   function renderAttendants() {
     const select = $('#attendantSelect');
     const selected = select.value;
-    select.innerHTML = `<option value="">Selecione seu nome</option>${STAFF_NAMES
+    select.innerHTML = `<option value="">${attendantsReady ? 'Selecione seu nome' : 'Carregando atendentes...'}</option>${state.attendants
       .map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('')}`;
-    if (STAFF_NAMES.includes(selected)) select.value = selected;
+    if (state.attendants.includes(selected)) select.value = selected;
+    select.disabled = !attendantsReady;
+  }
+
+  function normalizeAttendants(names) {
+    if (!Array.isArray(names)) return [];
+    return [...new Set(names
+      .filter(name => typeof name === 'string')
+      .map(name => name.trim())
+      .filter(Boolean))];
+  }
+
+  function applyAttendants(names) {
+    const normalized = normalizeAttendants(names);
+    state.attendants = normalized.length ? normalized : DEFAULT_STAFF_NAMES.slice();
+    attendantsReady = true;
+    renderAttendants();
+    updateCloudReadiness();
   }
 
   function getPromotion(productId) {
@@ -239,7 +258,7 @@ import {
     $('#manualDiscount').disabled = !count;
     $('#discountReason').disabled = totals.manualDiscount <= 0;
     if (totals.manualDiscount <= 0) $('#discountReason').value = '';
-    $('#finishSale').disabled = !cloudReady || !count || isSubmitting;
+    $('#finishSale').disabled = !cloudReady || !attendantsReady || !count || isSubmitting;
     $('#finishButtonText').textContent = isSubmitting ? 'Enviando pedido...' : 'Finalizar venda';
     $('#cartLines').innerHTML = cart.length ? cart.map(line => {
       const data = getLineData(line);
@@ -381,7 +400,7 @@ import {
     if (!cloudReady) throw new Error('Aguarde a conexão com o banco de dados.');
     if (!cart.length) throw new Error('Adicione produtos ou serviços antes de finalizar.');
     const attendant = $('#attendantSelect').value;
-    if (!STAFF_NAMES.includes(attendant)) {
+    if (!attendantsReady || !state.attendants.includes(attendant)) {
       $('#attendantSelect').focus();
       throw new Error('Selecione o atendente do pedido.');
     }
@@ -518,18 +537,40 @@ import {
     renderCart();
   }
 
+  function updateCloudReadiness() {
+    if (initializedCollections.size === COLLECTIONS.length && attendantsReady) {
+      cloudReady = true;
+      setConnection('live', 'Catálogo e atendentes atualizados');
+    }
+    renderCart();
+  }
+
   function subscribeToCollection(name) {
     return onSnapshot(collection(db, name), snapshot => {
       applySnapshot(name, snapshot);
       initializedCollections.add(name);
-      if (initializedCollections.size === COLLECTIONS.length) {
-        cloudReady = true;
-        setConnection('live', 'Catálogo atualizado');
-        renderCart();
-      }
+      updateCloudReadiness();
     }, error => {
       cloudReady = false;
       setConnection('error', 'Falha na conexão');
+      reportError(error);
+    });
+  }
+
+  async function loadAttendants() {
+    const attendantsRef = doc(db, 'financas', 'config_atendentes');
+    try {
+      const snapshot = await getDoc(attendantsRef);
+      applyAttendants(snapshot.exists() ? snapshot.data().attendants : []);
+    } catch (error) {
+      applyAttendants([]);
+      reportError(error);
+    }
+
+    return onSnapshot(attendantsRef, snapshot => {
+      applyAttendants(snapshot.exists() ? snapshot.data().attendants : []);
+    }, error => {
+      if (!attendantsReady) applyAttendants([]);
       reportError(error);
     });
   }
@@ -538,8 +579,14 @@ import {
     try {
       const app = initializeApp(firebaseConfig);
       db = getFirestore(app);
-      setConnection('pending', 'Carregando catálogo...');
+      setConnection('pending', 'Carregando catálogo e atendentes...');
       const unsubscribe = COLLECTIONS.map(subscribeToCollection);
+      loadAttendants().then(stop => {
+        unsubscribe.push(stop);
+      }).catch(error => {
+        applyAttendants([]);
+        reportError(error);
+      });
       window.addEventListener('beforeunload', () => unsubscribe.forEach(stop => stop()), { once: true });
     } catch (error) {
       setConnection('error', 'Falha na conexão');
